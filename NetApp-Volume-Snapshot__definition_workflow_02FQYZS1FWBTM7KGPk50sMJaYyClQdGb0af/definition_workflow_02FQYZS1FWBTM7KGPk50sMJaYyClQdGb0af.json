@@ -1,0 +1,562 @@
+{
+  "workflow": {
+    "unique_name": "definition_workflow_02FQYZS1FWBTM7KGPk50sMJaYyClQdGb0af",
+    "name": "NetApp-Volume-Snapshot",
+    "title": "NetApp-Volume-Snapshot",
+    "type": "generic.workflow",
+    "base_type": "workflow",
+    "variables": [
+      {
+        "schema_id": "datatype.string",
+        "properties": {
+          "value": "",
+          "scope": "input",
+          "name": "Skip Volumes",
+          "type": "datatype.string",
+          "description": "Enter any volume names that should not have Snapshots taken separated by a comma",
+          "is_required": false,
+          "display_on_wizard": true,
+          "is_invisible": false
+        },
+        "unique_name": "variable_workflow_02FR5BB3LPYHN0LcNTDkqTGEm5jOGQjPPfR",
+        "object_type": "variable_workflow"
+      },
+      {
+        "schema_id": "datatype.string",
+        "properties": {
+          "value": "XDRAction",
+          "scope": "input",
+          "name": "Snapshot Name",
+          "type": "datatype.string",
+          "description": "The name of the Snapshot that XDR will place on volumes that are Snapshot.  Each Snapshot will have this name followed by a data time stamp.",
+          "is_required": true,
+          "display_on_wizard": true,
+          "is_invisible": false
+        },
+        "unique_name": "variable_workflow_02FRIS78VERP46oiZTMUutz710WRueHvbca",
+        "object_type": "variable_workflow"
+      }
+    ],
+    "properties": {
+      "atomic": {
+        "is_atomic": false
+      },
+      "automation_rules": {
+        "type": [
+          "incident.rule_event"
+        ]
+      },
+      "delete_workflow_instance": false,
+      "description": "The XDR workflow will communicate with the On-Premises NetApp ONTAP Array and take the snapshot of all volumes found that are not in the skip volumes variable. ",
+      "display_name": "NetApp-Volume-Snapshot",
+      "runtime_user": {
+        "target_default": true
+      },
+      "target": {
+        "target_type": "web-service.endpoint",
+        "target_id": "definition_target_02FR15RUDKY816rRhHTrFnptVybJz2Vkn2I",
+        "execute_on_workflow_target": true
+      },
+      "wf_metadata": {
+        "coa": {
+          "action": [
+            "alert",
+            "investigate"
+          ],
+          "intent": "incident_response",
+          "observable_types": [
+            "none"
+          ]
+        }
+      }
+    },
+    "object_type": "definition_workflow",
+    "actions": [
+      {
+        "unique_name": "definition_activity_02FR3K7H9ZKO50vCHqgwOLRnUNkSt8CRgz4",
+        "name": "Format Date",
+        "title": "Format Run Start Date",
+        "type": "core.format_date",
+        "base_type": "activity",
+        "properties": {
+          "continue_on_failure": false,
+          "description": "Format workflow run date to be used in name of snapshot that is taken on NetApp volumes.",
+          "display_name": "Format Run Start Date",
+          "format_string": "20060102-150405",
+          "original_date": "$workflow.definition_workflow_02FQYZS1FWBTM7KGPk50sMJaYyClQdGb0af.output.start_time$",
+          "skip_execution": false,
+          "use_custom_format": false
+        },
+        "object_type": "definition_activity"
+      },
+      {
+        "unique_name": "definition_activity_02FRID8V9S2RS7LIH5ZjnBR9DaAQcoJOya0",
+        "name": "Execute Python Script",
+        "title": "Set Skipped Volumes",
+        "type": "python3.script",
+        "base_type": "activity",
+        "properties": {
+          "action_timeout": 180,
+          "continue_on_failure": false,
+          "description": "Input Skip Volumes variable and determine if value is null.  If value is null set to \"No Skipped Volumes\" so variable is not null for later step to function.",
+          "display_name": "Set Skipped Volumes",
+          "script": "import sys\n\nvolumes = sys.argv[1]\n\nif not volumes:\n  volumes = \"No Skipped Volumes\"\n  ",
+          "script_arguments": [
+            "$workflow.definition_workflow_02FQYZS1FWBTM7KGPk50sMJaYyClQdGb0af.input.variable_workflow_02FR5BB3LPYHN0LcNTDkqTGEm5jOGQjPPfR$"
+          ],
+          "script_queries": [
+            {
+              "script_query": "volumes",
+              "script_query_name": "Skipped Volumes",
+              "script_query_type": "string"
+            }
+          ],
+          "skip_execution": false
+        },
+        "object_type": "definition_activity"
+      },
+      {
+        "unique_name": "definition_activity_02FQYZSH75XQV2NjD9I5HtTWLGk6t5osYOM",
+        "name": "HTTP Request",
+        "title": "Get the NetApp Volume List",
+        "type": "web-service.http_request",
+        "base_type": "activity",
+        "properties": {
+          "action_timeout": 180,
+          "allow_auto_redirect": true,
+          "allow_headers_redirect": false,
+          "content_type": "application/json",
+          "continue_on_error_status_code": false,
+          "continue_on_failure": false,
+          "description": "This step will list all the existing volumes in the NetApp Array for use in next steps.",
+          "display_name": "Get the NetApp Volume List",
+          "method": "GET",
+          "relative_url": "/api/storage/volumes",
+          "runtime_user": {
+            "target_default": true
+          },
+          "skip_execution": false,
+          "target": {
+            "use_workflow_target": true
+          }
+        },
+        "object_type": "definition_activity"
+      },
+      {
+        "unique_name": "definition_activity_02FR3MRVDVBES0teR4HxKayUAVAOJ0vJOQI",
+        "name": "Condition Block",
+        "title": "Volume list retrieved?",
+        "type": "logic.if_else",
+        "base_type": "activity",
+        "properties": {
+          "continue_on_failure": false,
+          "display_name": "Volume list retrieved?",
+          "skip_execution": false
+        },
+        "object_type": "definition_activity",
+        "blocks": [
+          {
+            "unique_name": "definition_activity_02FR3MRVT225P2JHRkEtGv5OPGWVCvnxWmx",
+            "name": "Condition Branch",
+            "title": "200/Success",
+            "type": "logic.condition_block",
+            "base_type": "activity",
+            "properties": {
+              "condition": {
+                "left_operand": "$activity.definition_activity_02FQYZSH75XQV2NjD9I5HtTWLGk6t5osYOM.output.succeeded$",
+                "operator": "eq",
+                "right_operand": true
+              },
+              "continue_on_failure": false,
+              "display_name": "200/Success",
+              "skip_execution": false
+            },
+            "object_type": "definition_activity",
+            "actions": [
+              {
+                "unique_name": "definition_activity_02FR494IY11Q04wpPkaOkrTW8toq2e8l9Vc",
+                "name": "Completed",
+                "title": "Completed",
+                "type": "logic.completed",
+                "base_type": "activity",
+                "properties": {
+                  "completion_type": "succeeded",
+                  "continue_on_failure": false,
+                  "display_name": "Completed",
+                  "skip_execution": true
+                },
+                "object_type": "definition_activity"
+              }
+            ]
+          },
+          {
+            "unique_name": "definition_activity_02FR3MRW8PTHK503q3mMQKllaFq1k19YsKH",
+            "name": "Condition Branch",
+            "title": "Anything Else",
+            "type": "logic.condition_block",
+            "base_type": "activity",
+            "properties": {
+              "condition": {
+                "left_operand": "$activity.definition_activity_02FQYZSH75XQV2NjD9I5HtTWLGk6t5osYOM.output.succeeded$",
+                "operator": "eq",
+                "right_operand": false
+              },
+              "continue_on_failure": false,
+              "display_name": "Anything Else",
+              "skip_execution": false
+            },
+            "object_type": "definition_activity",
+            "actions": [
+              {
+                "unique_name": "definition_activity_02FR3Q6UHKWFV1pkCz6pDBtcnrMZlE7pbo9",
+                "name": "Completed",
+                "title": "Failed",
+                "type": "logic.completed",
+                "base_type": "activity",
+                "properties": {
+                  "completion_type": "failed-completed",
+                  "continue_on_failure": false,
+                  "display_name": "Failed",
+                  "result_message": "Failed to retrieve the volume list",
+                  "skip_execution": false
+                },
+                "object_type": "definition_activity"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unique_name": "definition_activity_02FR2J5ROTXWY1o2mRKInICgBGB9Hb6kSIa",
+        "name": "Read Table from JSON",
+        "title": "Create Volume Array",
+        "type": "corejava.read_table_from_json",
+        "base_type": "activity",
+        "properties": {
+          "action_timeout": 180,
+          "continue_on_failure": false,
+          "description": "Create array of volumes from JSON object returned from NetApp API query. ",
+          "display_name": "Create Volume Array",
+          "input_json": "$activity.definition_activity_02FQYZSH75XQV2NjD9I5HtTWLGk6t5osYOM.output.response_body$",
+          "jsonpath_query": "$.records",
+          "persist_output": false,
+          "populate_columns": false,
+          "skip_execution": false,
+          "table_columns": [
+            {
+              "column_name": "uuid",
+              "column_type": "string"
+            },
+            {
+              "column_name": "name",
+              "column_type": "string"
+            }
+          ]
+        },
+        "object_type": "definition_activity"
+      },
+      {
+        "unique_name": "definition_activity_02FR29FKDTXDO2mOqWoD82FobPDQvPARtfU",
+        "name": "For Each",
+        "title": "For Each Volume",
+        "type": "logic.for_each",
+        "base_type": "activity",
+        "properties": {
+          "continue_on_failure": false,
+          "description": "Run through each volume returned from NetApp array and Snapshot volume if volume is not in Skipped Volumes variable.",
+          "display_name": "For Each Volume",
+          "skip_execution": false,
+          "source_array": "$activity.definition_activity_02FR2J5ROTXWY1o2mRKInICgBGB9Hb6kSIa.output.read_table_from_json$"
+        },
+        "object_type": "definition_activity",
+        "actions": [
+          {
+            "unique_name": "definition_activity_02FRI6WVRW0AK5nFLeee6MMncgJWVGNnlkw",
+            "name": "Find String",
+            "title": "Find Volume In String",
+            "type": "core.find_string",
+            "base_type": "activity",
+            "properties": {
+              "action_timeout": 180,
+              "continue_on_failure": false,
+              "description": "Determine if current volume is in the list of volumes to skip.",
+              "display_name": "Find Volume In String",
+              "searched_string": "$activity.definition_activity_02FR29FKDTXDO2mOqWoD82FobPDQvPARtfU.input.source_array[@].name$",
+              "skip_execution": false,
+              "source": "$activity.definition_activity_02FRID8V9S2RS7LIH5ZjnBR9DaAQcoJOya0.output.script_queries.Skipped Volumes$"
+            },
+            "object_type": "definition_activity"
+          },
+          {
+            "unique_name": "definition_activity_02FR4QTD5MWU65xLBuD1JSyrsbQ8SAY3ef1",
+            "name": "Condition Block",
+            "title": "Skip Current Volume?",
+            "type": "logic.if_else",
+            "base_type": "activity",
+            "properties": {
+              "continue_on_failure": false,
+              "display_name": "Skip Current Volume?",
+              "skip_execution": false
+            },
+            "object_type": "definition_activity",
+            "blocks": [
+              {
+                "unique_name": "definition_activity_02FR4QTDKTMOG26jP4ndbhLuzX43X2WRnIK",
+                "name": "Condition Branch",
+                "title": "Skip Volume",
+                "type": "logic.condition_block",
+                "base_type": "activity",
+                "properties": {
+                  "condition": {
+                    "left_operand": "$activity.definition_activity_02FRI6WVRW0AK5nFLeee6MMncgJWVGNnlkw.output.has_match$",
+                    "operator": "eq",
+                    "right_operand": true
+                  },
+                  "continue_on_failure": false,
+                  "description": "Volume is in the list of volumes to be skipped",
+                  "display_name": "Skip Volume",
+                  "skip_execution": false
+                },
+                "object_type": "definition_activity",
+                "actions": [
+                  {
+                    "unique_name": "definition_activity_02FR5O55UPXRK0XA7E2GGCFO8gyl1I7RTqa",
+                    "name": "Completed",
+                    "title": "Skip Volume Snapshot",
+                    "type": "logic.completed",
+                    "base_type": "activity",
+                    "properties": {
+                      "completion_type": "succeeded",
+                      "continue_on_failure": false,
+                      "display_name": "Skip Volume Snapshot",
+                      "skip_execution": true
+                    },
+                    "object_type": "definition_activity"
+                  }
+                ]
+              },
+              {
+                "unique_name": "definition_activity_02FR4QTE03L2C7CqXMdsfJHgKEK8h1fyGA4",
+                "name": "Condition Branch",
+                "title": "Don't Skip Volume",
+                "type": "logic.condition_block",
+                "base_type": "activity",
+                "properties": {
+                  "condition": {
+                    "left_operand": "$activity.definition_activity_02FRI6WVRW0AK5nFLeee6MMncgJWVGNnlkw.output.has_match$",
+                    "operator": "eq",
+                    "right_operand": false
+                  },
+                  "continue_on_failure": false,
+                  "description": "Volume is not in list of volumes to skip",
+                  "display_name": "Don't Skip Volume",
+                  "skip_execution": false
+                },
+                "object_type": "definition_activity",
+                "actions": [
+                  {
+                    "unique_name": "definition_activity_02FR2KAYDI1R27fIlR5AkmrVjhQXKAG4Hfe",
+                    "name": "HTTP Request",
+                    "title": "Snapshot Volume",
+                    "type": "web-service.http_request",
+                    "base_type": "activity",
+                    "properties": {
+                      "action_timeout": 180,
+                      "allow_auto_redirect": true,
+                      "allow_headers_redirect": false,
+                      "body": "{\"name\": \"$workflow.definition_workflow_02FQYZS1FWBTM7KGPk50sMJaYyClQdGb0af.input.variable_workflow_02FRIS78VERP46oiZTMUutz710WRueHvbca$.$activity.definition_activity_02FR3K7H9ZKO50vCHqgwOLRnUNkSt8CRgz4.output.result$\"}",
+                      "content_type": "application/json",
+                      "continue_on_error_status_code": false,
+                      "continue_on_failure": false,
+                      "description": "Create a snapshot of each volume in JSON volume output from NetApp",
+                      "display_name": "Snapshot Volume",
+                      "method": "POST",
+                      "relative_url": "/api/storage/volumes/$activity.definition_activity_02FR29FKDTXDO2mOqWoD82FobPDQvPARtfU.input.source_array[@].uuid$/snapshots",
+                      "runtime_user": {
+                        "target_default": true
+                      },
+                      "skip_execution": false,
+                      "target": {
+                        "use_workflow_target": true
+                      }
+                    },
+                    "object_type": "definition_activity"
+                  },
+                  {
+                    "unique_name": "definition_activity_02FR4EG5EL7656ROqwmngZlcP4whQVt6lUq",
+                    "name": "Condition Block",
+                    "title": "Volume Snapshot Successful?",
+                    "type": "logic.if_else",
+                    "base_type": "activity",
+                    "properties": {
+                      "continue_on_failure": false,
+                      "description": "Was the snapshot of the volume successful",
+                      "display_name": "Volume Snapshot Successful?",
+                      "skip_execution": false
+                    },
+                    "object_type": "definition_activity",
+                    "blocks": [
+                      {
+                        "unique_name": "definition_activity_02FR4EG5ELWRV7M54b4fnVZ6sKpD4VMhWT7",
+                        "name": "Condition Branch",
+                        "title": "200/Success",
+                        "type": "logic.condition_block",
+                        "base_type": "activity",
+                        "properties": {
+                          "condition": {
+                            "left_operand": "$activity.definition_activity_02FR2KAYDI1R27fIlR5AkmrVjhQXKAG4Hfe.output.succeeded$",
+                            "operator": "eq",
+                            "right_operand": true
+                          },
+                          "continue_on_failure": false,
+                          "display_name": "200/Success",
+                          "skip_execution": false
+                        },
+                        "object_type": "definition_activity",
+                        "actions": [
+                          {
+                            "unique_name": "definition_activity_02FR4EG5ENFD23WKGFUlWgzKtJpHwVCc45Q",
+                            "name": "Completed",
+                            "title": "Snapshot Success",
+                            "type": "logic.completed",
+                            "base_type": "activity",
+                            "properties": {
+                              "completion_type": "succeeded",
+                              "continue_on_failure": false,
+                              "display_name": "Snapshot Success",
+                              "skip_execution": true
+                            },
+                            "object_type": "definition_activity"
+                          }
+                        ]
+                      },
+                      {
+                        "unique_name": "definition_activity_02FR4EG5EQMFB47RP6MCJShWnazswB94goN",
+                        "name": "Condition Branch",
+                        "title": "Anything Else",
+                        "type": "logic.condition_block",
+                        "base_type": "activity",
+                        "properties": {
+                          "condition": {
+                            "left_operand": "$activity.definition_activity_02FR2KAYDI1R27fIlR5AkmrVjhQXKAG4Hfe.output.succeeded$",
+                            "operator": "eq",
+                            "right_operand": false
+                          },
+                          "continue_on_failure": false,
+                          "display_name": "Anything Else",
+                          "skip_execution": false
+                        },
+                        "object_type": "definition_activity",
+                        "actions": [
+                          {
+                            "unique_name": "definition_activity_02FR4EG5ERLMA4w10ceebzW14djY5QBZpoD",
+                            "name": "Completed",
+                            "title": "Snapshot Failed",
+                            "type": "logic.completed",
+                            "base_type": "activity",
+                            "properties": {
+                              "completion_type": "failed-completed",
+                              "continue_on_failure": false,
+                              "display_name": "Snapshot Failed",
+                              "result_message": "Failed to Snapshot Volume",
+                              "skip_execution": false
+                            },
+                            "object_type": "definition_activity"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "unique_name": "definition_activity_02FQYZSVLEDD53Z2ewZb8Ln5Nfa1nlDU6Kn",
+        "name": "Set Variables",
+        "title": "End the Workflow",
+        "type": "core.set_multiple_variables",
+        "base_type": "activity",
+        "properties": {
+          "continue_on_failure": false,
+          "display_name": "End the Workflow",
+          "skip_execution": false,
+          "variables_to_update": [
+            {
+              "variable_to_update": "$workflow.definition_workflow_02FQYZS1FWBTM7KGPk50sMJaYyClQdGb0af.output.workflow_results$",
+              "variable_value_new": "Done"
+            }
+          ]
+        },
+        "object_type": "definition_activity"
+      }
+    ],
+    "categories": [
+      "category_1BMfMXSnJMyt5Ihqi7rWJr5N8cf"
+    ],
+    "template_type": "template_workflow.incident_response"
+  },
+  "targets": {
+    "definition_target_02FR15RUDKY816rRhHTrFnptVybJz2Vkn2I": {
+      "unique_name": "definition_target_02FR15RUDKY816rRhHTrFnptVybJz2Vkn2I",
+      "name": "NetApp Account",
+      "title": "NetApp Account",
+      "type": "web-service.endpoint",
+      "base_type": "target",
+      "object_type": "definition_target",
+      "properties": {
+        "ao_remote_id": "02DAN9GAP2GFC2GKpvyiD1LT72NAgay56D8",
+        "default_runtime_user_id": "definition_runtime_user_02FR151TMUH641GASGHlHfagrLId4hYQYRD",
+        "description": "",
+        "disable_certificate_validation": true,
+        "display_name": "NetApp Account",
+        "host": "192.168.115.22",
+        "ignore_proxy": false,
+        "no_runtime_user": false,
+        "protocol": "https"
+      }
+    }
+  },
+  "runtime_users": {
+    "definition_runtime_user_02FR151TMUH641GASGHlHfagrLId4hYQYRD": {
+      "unique_name": "definition_runtime_user_02FR151TMUH641GASGHlHfagrLId4hYQYRD",
+      "name": "NetApp Account",
+      "title": "NetApp Account",
+      "type": "runtime_user.web-service_basic_credentials",
+      "base_type": "runtime_user",
+      "object_type": "definition_runtime_user",
+      "properties": {
+        "auth_option": "Basic",
+        "basic_password": "*****",
+        "basic_username": "admin",
+        "display_name": "NetApp Account"
+      }
+    }
+  },
+  "remotemetas": {
+    "remote_meta_02DAN9GAP4PEN1sa1sNIajfcM7ABs8kt4Qr": {
+      "base_type": "remote_meta",
+      "type": "generic.remote_meta",
+      "name": "Remote VM",
+      "title": "Remote VM",
+      "version": "1.0.0",
+      "properties": {
+        "advanced": {
+          "require_advanced": false
+        },
+        "cloud_type": "vmware",
+        "display_name": "Remote VM",
+        "network": {
+          "is_dhcp": true
+        },
+        "proxy": {
+          "require_proxy": false
+        }
+      },
+      "unique_name": "remote_meta_02DAN9GAP4PEN1sa1sNIajfcM7ABs8kt4Qr",
+      "object_type": "remote_meta"
+    }
+  }
+}
